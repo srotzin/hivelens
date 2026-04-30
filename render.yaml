@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: hivelens
+    env: node
+    region: oregon
+    plan: starter
+    branch: main
+    buildCommand: npm install
+    startCommand: node start.js
+    healthCheckPath: /health
+    autoDeploy: yes
+    numInstances: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
