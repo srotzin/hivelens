@@ -349,4 +349,69 @@ app.use((err, req, res, _next) => {
   });
 });
 
+// ─── /llms.txt — agent discovery (llmstxt.org convention) ────────────────────
+app.get('/llms.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8').send(`# HiveLens
+> Fleet observability and audit-replay surface for the Hive Civilization federation.
+
+## What this is
+HiveLens is the read-mostly observability and audit-replay service for the Hive Civilization
+agent economy. It provides signed fleet health snapshots, agent heartbeat aggregation,
+dropped-agent detection, and historical audit replay over the entire Hive fleet.
+Every paid response is a JCS-canonical Ed25519-signed envelope for tamper-evident audit.
+
+## Hive Civilization context
+HiveLens is one node in the Hive Civilization federation — a fleet of agent-facing
+microservices designed to be fully autonomous-agent navigable.
+Sister services share the same x402 / MPP payment rails, the same treasury address,
+and the same "Hive Civilization gold #FFB800" brand.
+Service DID: did:hive:hivelens
+
+## Auth model
+- Free endpoints: GET /health, GET /openapi.json, GET /llms.txt
+- x402 paywalled: all /v1/lens/* read endpoints
+- x402 settles to treasury 0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E on Base in USDC or USDT
+- MPP rail also accepted (Tempo USDCe on Arbitrum)
+- Read-mostly: no write endpoints exposed publicly
+
+## Counter-offer / barter floor
+The 402 response envelope contains \`amount_min_usd\` — the floor price for that endpoint.
+Submit any value >= \`amount_min_usd\`. No ceiling enforced server-side.
+Example header: \`X-Payment: amount=0.10,currency=USDC,chain=base,to=0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E\`
+
+## Example flow — fleet health check
+1. GET /health — free liveness + upstream connectivity check
+2. POST /v1/lens/fleet/health (x402, ~$0.10) — aggregate fleet beats + dropped-agent list (last 5 min)
+3. Inspect signed envelope: verify Ed25519 signature with HiveLens public key from /.well-known/did.json
+4. Archive the signed response for audit replay
+
+## Example flow — audit replay
+1. POST /v1/lens/audit/replay — replay a historical signed event stream by agent DID + time window
+2. Verify each event's Ed25519 signature in sequence
+3. Cross-reference with HiveTrust reputation scores at https://hivetrust.onrender.com
+
+## Key endpoints
+- GET  /health                        — liveness + upstream status (free)
+- POST /v1/lens/fleet/health          — signed fleet health snapshot — $0.10 USDC (x402)
+- POST /v1/lens/audit/replay          — historical audit replay (x402)
+- POST /v1/lens/agent/heartbeat       — per-agent heartbeat query (x402)
+- GET  /openapi.json                  — OpenAPI 3.1 spec with x402 pricing block
+
+## Sister services
+- HiveBank  (vaults + payments):  https://hivebank.onrender.com/llms.txt
+- HiveGate  (auth + onboarding):  https://hivegate.onrender.com/llms.txt
+- HiveOrigin (routing + egress):  https://hiveorigin.onrender.com/llms.txt
+- HiveMorph (morphing + attest):  https://hivemorph.onrender.com/llms.txt
+- HiveTrust (KYA + trust scores): https://hivetrust.onrender.com/llms.txt
+- HiveAttest MCP:                 https://hive-mcp-attest.onrender.com/llms.txt
+- HiveMining MCP:                 https://hive-mcp-mining.onrender.com/llms.txt
+
+## License + brand
+License: MIT
+Brand color: gold #FFB800
+Treasury: 0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E (Base USDC/USDT)
+Last updated: 2026-05-02
+`);
+});
+
 export default app;
