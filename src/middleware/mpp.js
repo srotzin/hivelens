@@ -48,9 +48,11 @@ function getLensPrice(path) {
 const FREE_PATHS = new Set([
   '/lens/pubkey',
 ]);
+const FREE_PREFIXES = ['/.well-known/', '/prov/'];
 
 function isFreePath(path) {
-  return FREE_PATHS.has(path);
+  if (FREE_PATHS.has(path)) return true;
+  return FREE_PREFIXES.some(p => path.startsWith(p));
 }
 
 // ─── In-memory MPP payment cache (TTL 10 min) ────────────────
