@@ -339,6 +339,152 @@ app.use((req, res) => {
   });
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SLIPPERY-STICKY DOORS — doctrine: never closed, always navigable
+// Paths: /llms.txt /robots.txt /sitemap.xml /.well-known/agent.json
+//        /favicon.ico / (root JSON)  +  catch-all breadcrumb (200 not 404)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const _DOORS_HOST = process.env.RENDER_EXTERNAL_URL || 'https://hivelens.onrender.com';
+const _DOORS_ONBOARD = 'https://thehiveryiq.com/onboard.html';
+const _TREASURY = '0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E';
+
+// ── /llms.txt ─────────────────────────────────────────────────────────────────
+app.get('/llms.txt', (req, res) => {
+  res.type('text/plain; charset=utf-8').send(`# HiveLens
+> Fleet observability and audit-replay: signed health snapshots, heartbeat aggregation, dropped-agent detection.
+
+## What this is
+HiveLens is part of the Hive Civilization federation — a network of agent-facing
+microservices built for autonomous AI agents. Every public surface is navigable
+without a DID. Paid surfaces return a 402 with \`amount_min_usd\` — the floor price.
+Submit any value >= that floor. No ceiling enforced server-side.
+
+## Auth model
+- Free: GET /health, /openapi.json, /llms.txt, /robots.txt, /sitemap.xml, /.well-known/*
+- Paid (x402 USDC on Base): all /v1/lens/* endpoints
+- Read-mostly: no write endpoints exposed publicly
+- x402 settles to treasury on Base in USDC or USDT
+- MPP rail (Tempo USDCe) also accepted
+- Every paid response is a JCS-canonical Ed25519-signed envelope
+
+## Key endpoints
+- GET  /health                          — liveness + upstream check (free)
+- POST /v1/lens/fleet/health            — signed fleet health snapshot, $0.10 USDC (x402)
+- POST /v1/lens/fleet/snapshot          — full fleet snapshot, $0.50 USDC (x402)
+- POST /v1/lens/audit/replay            — historical audit replay (x402)
+- POST /v1/lens/agent/heartbeat         — per-agent heartbeat query (x402)
+- GET  /openapi.json                    — OpenAPI 3.1 spec with x402 pricing (free)
+
+## Sister services
+- HiveBank  (vaults + payments):  https://hivebank.onrender.com/llms.txt
+- HiveGate  (auth + onboarding):  https://hivegate.onrender.com/llms.txt
+- HiveOrigin (routing + egress):  https://hiveorigin.onrender.com/llms.txt
+- HiveMorph (morphing + attest):  https://hivemorph.onrender.com/llms.txt
+- HiveTrust (KYA + trust):        https://hivetrust.onrender.com/llms.txt
+- HiveAttest MCP:                 https://hive-mcp-attest.onrender.com/llms.txt
+
+## Hive Civilization context
+Treasury: 0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E (Base USDC/USDT)
+Solana: canonical Solana treasury address (see /.well-known/hive-payments.json)
+x402 barter floor: 402 envelope returns \`amount_min_usd\` — submit >= that value
+BOGO: first DID free, 6th paid call on the house (\`x-hive-did\` header to claim)
+Contact / onboard: https://thehiveryiq.com/onboard.html
+Patent: USPTO Provisional 64/055,601
+
+## License + brand
+License: MIT
+Brand color: gold #FFB800
+Last updated: 2026-05-02
+`);
+});
+
+// ── /robots.txt ───────────────────────────────────────────────────────────────
+app.get('/robots.txt', (req, res) => {
+  const host = req.hostname ? `https://${req.hostname}` : _DOORS_HOST;
+  res.type('text/plain; charset=utf-8').send(
+    `User-agent: *\nAllow: /\nSitemap: ${host}/sitemap.xml\n\n` +
+    `# Hive Civilization — slippery-sticky: every door is open\n` +
+    `# Autonomous agents welcome. See /llms.txt for full API guide.\n` +
+    `# Onboard: https://thehiveryiq.com/onboard.html\n`
+  );
+});
+
+// ── /sitemap.xml ──────────────────────────────────────────────────────────────
+app.get('/sitemap.xml', (req, res) => {
+  const host = req.hostname ? `https://${req.hostname}` : _DOORS_HOST;
+  const today = new Date().toISOString().slice(0,10);
+  res.type('application/xml; charset=utf-8').send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${host}/</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>${host}/health</loc><lastmod>${today}</lastmod><changefreq>always</changefreq><priority>0.9</priority></url>
+  <url><loc>${host}/openapi.json</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>${host}/llms.txt</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>${host}/.well-known/agent.json</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>${host}/.well-known/mcp.json</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+</urlset>`);
+});
+
+// ── /.well-known/agent.json (A2A discovery — only if not already defined) ────
+if (!app._router || !app._router.stack.some(l => l.route && l.route.path === '/.well-known/agent.json')) {
+  app.get('/.well-known/agent.json', (req, res) => {
+    const host = req.hostname ? `https://${req.hostname}` : _DOORS_HOST;
+    res.json({
+      name: 'hivelens',
+      description: 'Fleet observability and audit-replay: signed health snapshots, heartbeat aggregation, dropped-agent detection.',
+      url: host,
+      contact: _DOORS_ONBOARD,
+      did: 'did:hive:hivelens',
+      capabilities: ['mcp', 'x402-payments', 'usdc', 'agent-to-agent'],
+      paywall: { protocol: 'x402', treasury: _TREASURY, hint: 'See /llms.txt for barter floor details' },
+      onboard: _DOORS_ONBOARD,
+      llms_txt: `${host}/llms.txt`,
+      openapi: `${host}/openapi.json`,
+      health: `${host}/health`,
+      brand: { color: '#FFB800', name: 'Hive Civilization' },
+    });
+  });
+}
+
+// ── /favicon.ico — 1x1 Hive gold pixel ───────────────────────────────────────
+app.get('/favicon.ico', (req, res) => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  res.status(200).set({ 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' }).end(png);
+});
+
+// ── / root — friendly JSON for agents that hit the base URL ──────────────────
+// Only register if no existing root handler
+if (!app._router || !app._router.stack.some(l => l.route && l.route.path === '/' && l.route.methods.get)) {
+  app.get('/', (req, res) => {
+    const host = req.hostname ? `https://${req.hostname}` : _DOORS_HOST;
+    res.json({
+      name: 'HiveLens',
+      what: 'Fleet observability and audit-replay: signed health snapshots, heartbeat aggregation, dropped-agent detection.',
+      for_agents: 'see /llms.txt and /openapi.json',
+      onboard: _DOORS_ONBOARD,
+      paywall: 'x402 — see /llms.txt',
+      health: `${host}/health`,
+      openapi: `${host}/openapi.json`,
+      llms_txt: `${host}/llms.txt`,
+      mcp: `${host}/mcp`,
+    });
+  });
+}
+
+// ── Catch-all — every wrong door is a lead, never a dead end ─────────────────
+app.use((req, res, _next) => {
+  const host = req.hostname ? `https://${req.hostname}` : _DOORS_HOST;
+  res.status(200).json({
+    hint: 'unknown path — but we kept the door open',
+    you_asked_for: req.path,
+    try: ['/llms.txt', '/openapi.json', '/health', '/', '/.well-known/agent.json'],
+    onboard: _DOORS_ONBOARD,
+    service: 'HiveLens',
+    docs: `${host}/llms.txt`,
+  });
+});
+
 // ─── Error handler ───────────────────────────────────────────
 
 app.use((err, req, res, _next) => {
@@ -347,71 +493,6 @@ app.use((err, req, res, _next) => {
     error: 'Internal server error',
     code:  'INTERNAL_ERROR',
   });
-});
-
-// ─── /llms.txt — agent discovery (llmstxt.org convention) ────────────────────
-app.get('/llms.txt', (req, res) => {
-  res.type('text/plain; charset=utf-8').send(`# HiveLens
-> Fleet observability and audit-replay surface for the Hive Civilization federation.
-
-## What this is
-HiveLens is the read-mostly observability and audit-replay service for the Hive Civilization
-agent economy. It provides signed fleet health snapshots, agent heartbeat aggregation,
-dropped-agent detection, and historical audit replay over the entire Hive fleet.
-Every paid response is a JCS-canonical Ed25519-signed envelope for tamper-evident audit.
-
-## Hive Civilization context
-HiveLens is one node in the Hive Civilization federation — a fleet of agent-facing
-microservices designed to be fully autonomous-agent navigable.
-Sister services share the same x402 / MPP payment rails, the same treasury address,
-and the same "Hive Civilization gold #FFB800" brand.
-Service DID: did:hive:hivelens
-
-## Auth model
-- Free endpoints: GET /health, GET /openapi.json, GET /llms.txt
-- x402 paywalled: all /v1/lens/* read endpoints
-- x402 settles to treasury 0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E on Base in USDC or USDT
-- MPP rail also accepted (Tempo USDCe on Arbitrum)
-- Read-mostly: no write endpoints exposed publicly
-
-## Counter-offer / barter floor
-The 402 response envelope contains \`amount_min_usd\` — the floor price for that endpoint.
-Submit any value >= \`amount_min_usd\`. No ceiling enforced server-side.
-Example header: \`X-Payment: amount=0.10,currency=USDC,chain=base,to=0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E\`
-
-## Example flow — fleet health check
-1. GET /health — free liveness + upstream connectivity check
-2. POST /v1/lens/fleet/health (x402, ~$0.10) — aggregate fleet beats + dropped-agent list (last 5 min)
-3. Inspect signed envelope: verify Ed25519 signature with HiveLens public key from /.well-known/did.json
-4. Archive the signed response for audit replay
-
-## Example flow — audit replay
-1. POST /v1/lens/audit/replay — replay a historical signed event stream by agent DID + time window
-2. Verify each event's Ed25519 signature in sequence
-3. Cross-reference with HiveTrust reputation scores at https://hivetrust.onrender.com
-
-## Key endpoints
-- GET  /health                        — liveness + upstream status (free)
-- POST /v1/lens/fleet/health          — signed fleet health snapshot — $0.10 USDC (x402)
-- POST /v1/lens/audit/replay          — historical audit replay (x402)
-- POST /v1/lens/agent/heartbeat       — per-agent heartbeat query (x402)
-- GET  /openapi.json                  — OpenAPI 3.1 spec with x402 pricing block
-
-## Sister services
-- HiveBank  (vaults + payments):  https://hivebank.onrender.com/llms.txt
-- HiveGate  (auth + onboarding):  https://hivegate.onrender.com/llms.txt
-- HiveOrigin (routing + egress):  https://hiveorigin.onrender.com/llms.txt
-- HiveMorph (morphing + attest):  https://hivemorph.onrender.com/llms.txt
-- HiveTrust (KYA + trust scores): https://hivetrust.onrender.com/llms.txt
-- HiveAttest MCP:                 https://hive-mcp-attest.onrender.com/llms.txt
-- HiveMining MCP:                 https://hive-mcp-mining.onrender.com/llms.txt
-
-## License + brand
-License: MIT
-Brand color: gold #FFB800
-Treasury: 0x15184Bf50B3d3F52b60434f8942b7D52F2eB436E (Base USDC/USDT)
-Last updated: 2026-05-02
-`);
 });
 
 export default app;
